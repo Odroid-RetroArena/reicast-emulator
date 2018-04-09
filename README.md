@@ -4,6 +4,8 @@ reicast is a multi-platform Sega Dreamcast emulator.
 
 This is a developer-oriented resource, if you just want bins head over to http://reicast.com/
 
+For development discussion, join #dreamcast in the r/EmuDev slack, https://slofile.com/slack/emudev
+
 Caution
 -------
 The source is a mess, and I need sleep.
@@ -149,6 +151,7 @@ Devices tested by the reicast team:
 * Nvidia Shield tablet
 * Samsung Galaxy Note 4
 * LG Nexus 5
+* LG Nexus 5X
 * Asus Nexus 7 (2013)
 
 Team
