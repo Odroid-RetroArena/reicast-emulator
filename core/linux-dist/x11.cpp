@@ -4,6 +4,9 @@
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 
+#include <iostream>
+#include <X11/XKBlib.h>
+
 #if !defined(GLES)
 	#include <GL/gl.h>
 	#include <GL/glx.h>
@@ -37,6 +40,7 @@ int x11_height;
 int ndcid = 0;
 void* x11_glc;
 bool x11_fullscreen = false;
+Atom wmDeleteMessage;
 
 void* x11_vis;
 
@@ -64,6 +68,23 @@ void x11_window_set_fullscreen(bool fullscreen)
 		XSendEvent((Display*)x11_disp, DefaultRootWindow((Display*)x11_disp), False, SubstructureNotifyMask, &xev);
 }
 
+void start_shutdown(void);
+
+void event_x11_handle()
+{
+	XEvent event;
+
+	while(XPending((Display*)x11_disp)) {
+		XNextEvent((Display*)x11_disp, &event);
+
+		if (event.type == ClientMessage &&
+		event.xclient.data.l[0] == wmDeleteMessage) {
+			printf("Caught window close event\n");
+			start_shutdown();
+		}
+	}
+}
+
 void input_x11_handle()
 {
 	if (x11_win && x11_keyboard_input)
@@ -79,7 +100,7 @@ void input_x11_handle()
 				case KeyRelease:
 					if (e.type == KeyRelease && e.xkey.keycode == 9) // ESC button
 					{
-						die("death by escape key");
+						start_shutdown();
 					}
 #if FEAT_HAS_NIXPROF
 					else if (e.type == KeyRelease && e.xkey.keycode == 76) // F10 button
@@ -140,6 +161,9 @@ void input_x11_init()
 
 void x11_window_create()
 {
+
+	Bool ar_set, ar_supp = false;
+
 	if (cfgLoadInt("pvr", "nox11", 0) == 0)
 	{
 		XInitThreads();
@@ -255,6 +279,10 @@ void x11_window_create()
 		x11Window = XCreateWindow(x11Display, RootWindow(x11Display, x11Screen), (ndcid%3)*640, (ndcid/3)*480, x11_width, x11_height,
 			0, depth, InputOutput, x11Visual->visual, ui32Mask, &sWA);
 
+ 		// Capture the close window event
+		wmDeleteMessage = XInternAtom(x11Display, "WM_DELETE_WINDOW", False);
+		XSetWMProtocols(x11Display, x11Window, &wmDeleteMessage, 1);
+
 		if(x11_fullscreen)
 		{
 
@@ -302,6 +330,9 @@ void x11_window_create()
 		x11_disp = (void*)x11Display;
 		x11_win = (void*)x11Window;
 		x11_vis = (void*)x11Visual->visual;
+
+		ar_set = XkbSetDetectableAutoRepeat(x11Display, True, &ar_supp);
+        printf("XkbSetDetectableAutoRepeat returns %u, supported = %u\n",ar_set, ar_supp);
 	}
 	else
 	{
@@ -320,8 +351,17 @@ void x11_window_set_text(const char* text)
 	}
 }
 
+void x11_gl_context_destroy()
+{
+	printf("Destroy GL Context\n");
+	glXMakeCurrent((Display*)x11_disp, None, NULL);
+ 	glXDestroyContext((Display*)x11_disp, (GLXContext)x11_glc);
+}
+
+
 void x11_window_destroy()
 {
+	printf("Destroy X11 Window\n");
 	// close XWindow
 	if (x11_win)
 	{
@@ -334,4 +374,5 @@ void x11_window_destroy()
 		x11_disp = 0;
 	}
 }
+
 #endif

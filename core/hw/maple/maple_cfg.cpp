@@ -14,7 +14,7 @@ Plugins:
 		KeyMap -- translated chars ( no re-mapping possible)
 	Output
 		Image
-		
+
 */
 /*
 	MapleConfig:
@@ -75,7 +75,7 @@ void mcfg_Create(MapleDeviceType type,u32 bus,u32 port)
 
 void mcfg_CreateDevices()
 {
-int numberOfControl = cfgLoadInt("players", "nb", 1);
+	int numberOfControl = cfgLoadInt("players", "nb", 1);
 #if DC_PLATFORM == DC_PLATFORM_DREAMCAST
 	if (numberOfControl <= 0)
 		numberOfControl = 1;
@@ -84,10 +84,12 @@ int numberOfControl = cfgLoadInt("players", "nb", 1);
 
 	for (int i = 0; i < numberOfControl; i++){
 		mcfg_Create(MDT_SegaController, i, 5);
+
+		/* Create VMU for each controller in slot 0 only */
+		mcfg_Create(MDT_SegaVMU,i,0);
+		//mcfg_Create(MDT_SegaVMU,i,1);
 	}
 
-	mcfg_Create(MDT_SegaVMU,0,0);
-	mcfg_Create(MDT_SegaVMU,0,1);
 #else
 	mcfg_Create(MDT_NaomiJamma, 0, 5);
 #endif

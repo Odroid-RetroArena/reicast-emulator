@@ -155,11 +155,14 @@
 
 	EvdevControllerMapping load_mapping(FILE* fd)
 	{
+		string temp_name;
+		char* nameptr;
+
 		ConfigFile mf;
 		mf.parse(fd);
 
 		EvdevControllerMapping mapping = {
-			mf.get("emulator", "mapping_name", "<Unknown>").c_str(),
+			"0",
 			load_keycode(&mf, "dreamcast", "btn_a"),
 			load_keycode(&mf, "dreamcast", "btn_b"),
 			load_keycode(&mf, "dreamcast", "btn_c"),
@@ -192,6 +195,14 @@
 			mf.get_bool("compat", "axis_trigger_left_inverted", false),
 			mf.get_bool("compat", "axis_trigger_right_inverted", false)
 		};
+
+		/* Update the name field. Rather than store a pointer to a string,
+			 Copy the string to a char array so that it does not get corrupted */
+		temp_name = mf.get("emulator", "mapping_name", "<Unknown>");
+		/* Create char* pointer to const char* to keep compiler happy :) */
+		nameptr = (char*)mapping.name;
+		strncpy( nameptr, temp_name.c_str(), sizeof( mapping.name ) );
+
 		return mapping;
 	}
 
@@ -270,7 +281,7 @@
 						mapping_fd = fopen(get_readonly_data_path(mapping_path).c_str(), "r");
 						free(mapping_path);
 					}
-					
+
 					if(mapping_fd != NULL)
 					{
 						printf("evdev: reading mapping file: '%s'\n", mapping_fname);
@@ -298,6 +309,8 @@
 			return -1;
 		}
 	}
+
+        void start_shutdown(void);
 
 	bool input_evdev_handle(EvdevController* controller, u32 port)
 	{
@@ -331,7 +344,7 @@
 					} else if (ie.code == controller->mapping->Btn_Start) {
 						SET_FLAG(kcode[port], DC_BTN_START, ie.value);
 					} else if (ie.code == controller->mapping->Btn_Escape) {
-						die("death by escape key");
+                                                start_shutdown();
 					} else if (ie.code == controller->mapping->Btn_DPad_Left) {
 						SET_FLAG(kcode[port], DC_DPAD_LEFT, ie.value);
 					} else if (ie.code == controller->mapping->Btn_DPad_Right) {
@@ -486,4 +499,3 @@
 		}
 	}
 #endif
-

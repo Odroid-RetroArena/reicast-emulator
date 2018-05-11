@@ -225,12 +225,14 @@ void os_DoEvents()
 {
 	#if defined(SUPPORT_X11)
 		input_x11_handle();
+		event_x11_handle();
 	#endif
 }
 
 void os_SetWindowText(const char * text)
 {
-	printf("%s\n",text);
+	//Disabled terminal spam as it is displayed in the window bar
+	//printf("%s\n",text);
 	#if defined(SUPPORT_X11)
 		x11_window_set_text(text);
 	#endif
@@ -361,7 +363,7 @@ string find_user_data_dir()
 			// If XDG_DATA_HOME is set explicitly, we'll use that instead of $HOME/.config
 			data = (string)getenv("XDG_DATA_HOME") + "/reicast";
 		}
-		
+
 		if(!data.empty())
 		{
 			if((stat(data.c_str(), &info) != 0) || !(info.st_mode & S_IFDIR))
@@ -429,9 +431,34 @@ std::vector<string> find_system_data_dirs()
 	return dirs;
 }
 
+#if HOST_OS==OS_LINUX
+
+#if defined(SUPPORT_X11)
+    /* Required Prototypes */
+    void x11_gl_context_destroy();
+    void x11_window_destroy();
+#endif
+
+void dc_term();
+void rend_terminate();
+void ngen_terminate();
+
+void start_shutdown(void)
+{
+    printf("start_shutdown called\n");
+    rend_terminate();
+    ngen_terminate();
+}
+
+#endif
 
 int main(int argc, wchar* argv[])
 {
+
+	#ifdef NO_VIRTUAL_CFG
+		printf("Virtual CFG support is disabled in this build! \n");
+	#endif
+
 	#ifdef TARGET_PANDORA
 		signal(SIGSEGV, clean_exit);
 		signal(SIGKILL, clean_exit);
@@ -483,6 +510,33 @@ int main(int argc, wchar* argv[])
 		clean_exit(0);
 	#endif
 
+        #if HOST_OS==OS_LINUX
+
+            printf("main loop ended\n");
+
+            dc_term();
+
+	#if defined(USE_EVDEV)
+            printf("closing any open controllers\n");
+
+            for (int port = 0; port < 4 ; port++)
+            {
+                if(evdev_controllers[port].fd >= 0)
+                {
+                    close(evdev_controllers[port].fd);
+                }
+            }
+	#endif
+
+	#if defined(SUPPORT_X11)
+		/*Close the GL context */
+		x11_gl_context_destroy();
+		/* Destroy the window */
+		x11_window_destroy();
+	#endif
+
+        #endif
+
 	return 0;
 }
 #endif
@@ -499,6 +553,3 @@ void os_DebugBreak()
 		exit(-1);
 	#endif
 }
-
-
-
